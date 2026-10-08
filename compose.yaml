@@ -1,0 +1,27 @@
+include:
+  - path: ./backend/compose.yaml
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: nova-postgres
+    environment:
+      POSTGRES_DB: nova
+      POSTGRES_USER: nova
+      POSTGRES_PASSWORD: nova
+    ports:
+      - "5432:5432"
+    volumes:
+      - nova_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nova -d nova"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:-nova-demo-secret-change-before-deployment}
+
+volumes:
+  nova_pgdata:
