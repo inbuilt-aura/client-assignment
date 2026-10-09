@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { api, saveAccessToken } from "@/lib/api";
+import AuthShell from "@/components/AuthShell";
 
 export default function SignupPage() {
   const [businessName, setBusinessName] = useState("");
@@ -30,25 +31,21 @@ export default function SignupPage() {
     }
   }
 
-  return <main className="login-shell">
-    <header className="topbar"><a className="brand" href="/">NOVA<span>VENDOR PORTAL</span></a></header>
-    <section className="login-card">
-      <div className="login-mark">N</div>
-      <p className="eyebrow">VENDOR PORTAL</p>
-      <h1>Create your account</h1>
-      <p className="login-intro">Set up your business profile to manage service coverage.</p>
-      {error && <div className="login-error" role="alert">{error}{error.startsWith("An account with this email") && <> <a href="/login">Sign in</a>.</>}</div>}
-      <form onSubmit={submit}>
-        <label className="field-label" htmlFor="business-name">Business name</label>
-        <input className="login-input" id="business-name" autoComplete="organization" minLength={2} maxLength={160} required value={businessName} onChange={(event) => setBusinessName(event.target.value)} />
-        <label className="field-label password-label" htmlFor="email">Email address</label>
-        <input className="login-input" id="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
-        <label className="field-label password-label" htmlFor="password">Password</label>
-        <input className="login-input" id="password" type="password" autoComplete="new-password" minLength={10} maxLength={200} required value={password} onChange={(event) => setPassword(event.target.value)} />
-        <p className="field-help">Use at least 10 characters.</p>
-        <button className="save-button login-submit" type="submit" disabled={busy}>{busy ? "Creating account…" : "Create account"}<span className="arrow">→</span></button>
-      </form>
-      <p className="login-footnote">Already have an account? <a href="/login">Sign in</a></p>
-    </section>
-  </main>;
+  return <AuthShell
+    title="Create your account"
+    intro="Set up your business profile to manage service coverage."
+    alert={error ? <div className="login-error" role="alert">{error}{error.startsWith("An account with this email") && <> <a href="/login">Sign in</a>.</>}</div> : null}
+    footer={<p className="login-footnote">Already have an account? <a href="/login">Sign in</a></p>}
+  >
+    <form onSubmit={submit}>
+      <label className="field-label" htmlFor="business-name">Business name</label>
+      <input className="login-input" id="business-name" autoComplete="organization" minLength={2} maxLength={160} required value={businessName} onChange={(event) => setBusinessName(event.target.value)} />
+      <label className="field-label password-label" htmlFor="email">Email address</label>
+      <input className="login-input" id="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+      <label className="field-label password-label" htmlFor="password">Password</label>
+      <input className="login-input" id="password" type="password" autoComplete="new-password" minLength={10} maxLength={200} required value={password} onChange={(event) => setPassword(event.target.value)} />
+      <p className="field-help">Use at least 10 characters.</p>
+      <button className="save-button login-submit" type="submit" disabled={busy}>{busy ? "Creating account…" : "Create account"}<span className="arrow">→</span></button>
+    </form>
+  </AuthShell>;
 }

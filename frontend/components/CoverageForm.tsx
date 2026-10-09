@@ -2,19 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { api, clearAccessToken, Coverage, CoverageRecord, LocationOption, SupportedArea } from "@/lib/api";
-function Icon({ name }: { name: "pin" | "radius" | "areas" | "search" | "lock" | "check" | "arrow" | "info" }) {
-  const paths = {
-    pin: <><path d="M12 21s-6-5.2-6-11a6 6 0 0 1 12 0c0 5.8-6 11-6 11Z" /><circle cx="12" cy="10" r="2" /></>,
-    radius: <><circle cx="12" cy="12" r="9" strokeDasharray="2.5 3" /><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" /></>,
-    areas: <><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Zm6-3v15m6-12v15" /></>,
-    search: <><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 5 5" /></>,
-    lock: <><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
-    check: <path d="m5 12 4 4L19 6" />,
-    arrow: <><path d="M4 12h16m-6-6 6 6-6 6" /></>,
-    info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" /></>,
-  };
-  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
-}
+import Icon from "@/components/Icon";
 
 export default function CoverageForm() {
   const [record, setRecord] = useState<CoverageRecord | null>(null);
@@ -34,6 +22,7 @@ export default function CoverageForm() {
   const [errors, setErrors] = useState<string[]>([]);
   const searchVersion = useRef(0);
   const searchTimer = useRef<number | null>(null);
+  const submitting = useRef(false);
 
   async function loadCoverage() {
     setLoading(true);
@@ -113,9 +102,12 @@ export default function CoverageForm() {
   }
 
   async function submit(event: FormEvent) {
-    event.preventDefault(); setNotice(null);
+    event.preventDefault();
+    if (submitting.current) return;
+    setNotice(null);
     const coverage = validate();
     if (!coverage || !record) return;
+    submitting.current = true;
     setSaving(true);
     try {
       if (!vendorId) return;
@@ -126,7 +118,7 @@ export default function CoverageForm() {
       if (status === 401) { clearAccessToken(); window.location.assign("/login"); return; }
       if (status === 409) setNotice({ kind: "conflict", text: "This coverage changed in another session. Reload the latest version before saving again." });
       else setNotice({ kind: "error", text: "We couldn’t save your changes. Please try again." });
-    } finally { setSaving(false); }
+    } finally { submitting.current = false; setSaving(false); }
   }
 
   function toggleArea(id: string) { setAreaIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]); }
@@ -136,7 +128,7 @@ export default function CoverageForm() {
 
   return <form className="coverage-card" onSubmit={submit} noValidate>
     <div className="card-title"><div><h2>Where do you serve?</h2><p>Select the coverage that best describes your service area.</p></div><span className="required">* Required</span></div>
-    {notice && <div className={`notice ${notice.kind}`} role={notice.kind === "success" ? "status" : "alert"}><span className="notice-icon"><Icon name={notice.kind === "success" ? "check" : "info"} /></span><span>{notice.text}</span>{notice.kind === "conflict" && <button type="button" className="inline-button" onClick={() => void loadCoverage()}>Reload coverage</button>}</div>}
+    {notice && <div className="notice-toast"><div className={`notice ${notice.kind}`} role={notice.kind === "success" ? "status" : "alert"}><span className="notice-icon"><Icon name={notice.kind === "success" ? "check" : "info"} /></span><span>{notice.text}</span>{notice.kind === "conflict" && <button type="button" className="inline-button" onClick={() => void loadCoverage()}>Reload coverage</button>}</div></div>}
     <fieldset className="mode-grid"><legend className="sr-only">Coverage type</legend>
       <label className={`mode-card ${mode === "RADIUS" ? "selected" : ""}`}><input className="mode-input" type="radio" name="coverage-mode" checked={mode === "RADIUS"} onChange={() => { setMode("RADIUS"); setErrors([]); setNotice(null); }} />
         <span className="mode-icon radius-icon"><Icon name="radius" /></span><span className="mode-copy"><strong>Within a radius</strong><small>Serve customers near a central location</small></span><span className="radio-mark" />
