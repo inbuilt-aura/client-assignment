@@ -28,7 +28,7 @@ npm install
 npm run dev
 ```
 
-The frontend environment file points to the root-host API and seeded demo identity. The frontend is intentionally not containerized by Compose.
+The frontend proxies `/api` to the API at `http://127.0.0.1:8000/v1`, so signing in works from both `localhost:3000` and `127.0.0.1:3000`. If the API uses another address, set `API_PROXY_TARGET` in `frontend/.env.local` and restart Next.js. The frontend is intentionally not containerized by Compose.
 
 ## Contract and behavior
 

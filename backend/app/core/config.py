@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://nova:nova@localhost:5432/nova"
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     demo_auth_enabled: bool = True
     geocoding_provider: str = "nominatim"
     nominatim_base_url: str = "https://nominatim.openstreetmap.org"

@@ -7,7 +7,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://nova:nova@db:5432/nova
       DEMO_AUTH_ENABLED: "true"
-      CORS_ORIGINS: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
       GEOCODING_PROVIDER: nominatim
       NOMINATIM_BASE_URL: https://nominatim.openstreetmap.org
       GEOCODING_USER_AGENT: "NOVA-Vendor-Coverage/0.1 (service-area location search)"

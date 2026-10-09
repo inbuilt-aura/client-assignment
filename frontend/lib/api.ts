@@ -4,7 +4,7 @@ export type AreasCoverage = { mode: "AREAS"; area_ids: string[] };
 export type Coverage = RadiusCoverage | AreasCoverage;
 export type CoverageRecord = { vendor_id: string; revision: number; coverage: Coverage | null; updated_at: string | null };
 
-const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/v1";
+const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 const TOKEN_KEY = "nova_access_token";
 
 export type SignedInUser = { id: string; email: string; organization_id: string };

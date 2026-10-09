@@ -19,9 +19,5 @@ services:
       timeout: 3s
       retries: 10
 
-  api:
-    environment:
-      AUTH_SECRET: ${AUTH_SECRET:-nova-demo-secret-change-before-deployment}
-
 volumes:
   nova_pgdata:
