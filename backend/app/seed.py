@@ -14,6 +14,10 @@ def seed() -> None:
             db.add(User(id="user-demo", email="vendor-demo@nova.test", password_hash=hash_password("NOVA-demo-2026!"), organization_id="org-demo"))
         if db.query(User).filter_by(email="other-demo@nova.test").first() is None:
             db.add(User(id="user-other", email="other-demo@nova.test", password_hash=hash_password("NOVA-demo-2026!"), organization_id="org-other"))
+        if db.get(Vendor, "vendor-walkthrough") is None:
+            db.add(Vendor(id="vendor-walkthrough", organization_id="org-walkthrough", display_name="Coverage Walkthrough Events"))
+        if db.query(User).filter_by(email="coverage-walkthrough@nova.test").first() is None:
+            db.add(User(id="user-walkthrough", email="coverage-walkthrough@nova.test", password_hash=hash_password("NOVA-demo-2026!"), organization_id="org-walkthrough"))
         db.commit()
 
 

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.auth import LoginRequest, UserResponse
+from app.schemas.auth import LoginRequest, SignupRequest, UserResponse
 
 
 def test_demo_reserved_domain_is_accepted_for_login_and_current_user():
@@ -15,3 +15,11 @@ def test_demo_reserved_domain_is_accepted_for_login_and_current_user():
 def test_malformed_email_is_rejected():
     with pytest.raises(ValidationError):
         LoginRequest(email="not-an-email", password="password")
+
+
+def test_signup_requires_business_name_and_minimum_password_length():
+    request = SignupRequest(business_name="Northstar Events", email="owner@example.com", password="strong-passphrase")
+    assert request.business_name == "Northstar Events"
+
+    with pytest.raises(ValidationError):
+        SignupRequest(business_name="x", email="owner@example.com", password="short")

@@ -7,7 +7,9 @@ export type CoverageRecord = { vendor_id: string; revision: number; coverage: Co
 const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 const TOKEN_KEY = "nova_access_token";
 
-export type SignedInUser = { id: string; email: string; organization_id: string };
+export type SignedInUser = { id: string; email: string; organization_id: string; vendor_id: string | null };
+export type SupportedArea = { id: string; label: string; detail: string };
+export type ServiceAreaCatalog = { dataset_version: string; boundary_rule: string; areas: SupportedArea[] };
 
 export function saveAccessToken(token: string) {
   window.sessionStorage.setItem(TOKEN_KEY, token);
@@ -26,7 +28,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const error = new Error(payload?.detail?.message ?? payload?.detail?.code ?? "Request failed") as Error & { status: number };
+    const detail = payload?.detail;
+    const error = new Error(detail?.message ?? detail?.code ?? (typeof detail === "string" ? detail : "Request failed")) as Error & { status: number };
     error.status = response.status;
     throw error;
   }
@@ -35,7 +38,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   login: (email: string, password: string) => request<{ access_token: string; token_type: string; expires_in: number }>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  signup: (businessName: string, email: string, password: string) => request<{ access_token: string; token_type: string; expires_in: number }>("/auth/signup", { method: "POST", body: JSON.stringify({ business_name: businessName, email, password }) }),
   currentUser: () => request<SignedInUser>("/auth/me"),
+  serviceAreaCatalog: () => request<ServiceAreaCatalog>("/service-areas"),
   getCoverage: (vendorId: string) => request<CoverageRecord>(`/vendors/${vendorId}/service-area`),
   saveCoverage: (vendorId: string, expectedRevision: number, coverage: Coverage) =>
     request<CoverageRecord>(`/vendors/${vendorId}/service-area`, { method: "PATCH", body: JSON.stringify({ expected_revision: expectedRevision, coverage }) }),

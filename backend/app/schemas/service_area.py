@@ -49,6 +49,18 @@ class LocationResult(Location):
     pass
 
 
+class SupportedArea(BaseModel):
+    id: str
+    label: str
+    detail: str
+
+
+class ServiceAreaCatalog(BaseModel):
+    dataset_version: str
+    boundary_rule: str
+    areas: list[SupportedArea]
+
+
 class EligibilityRequest(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)

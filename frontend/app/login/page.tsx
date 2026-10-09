@@ -38,6 +38,7 @@ export default function LoginPage() {
       </form>
       <div className="demo-credentials"><strong>Assignment demo account</strong><span>vendor-demo@nova.test</span><span>NOVA-demo-2026!</span></div>
       <p className="login-footnote">Demo authentication for the assignment environment.</p>
+      <p className="login-footnote">New to NOVA? <a href="/signup">Create an account</a></p>
     </section>
   </main>;
 }

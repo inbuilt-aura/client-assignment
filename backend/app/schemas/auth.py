@@ -20,6 +20,12 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=200)
 
 
+class SignupRequest(BaseModel):
+    business_name: str = Field(min_length=2, max_length=160, strip_whitespace=True)
+    email: EmailAddress
+    password: str = Field(min_length=10, max_length=200)
+
+
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -30,3 +36,4 @@ class UserResponse(BaseModel):
     id: str
     email: EmailAddress
     organization_id: str
+    vendor_id: str | None = None

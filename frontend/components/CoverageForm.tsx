@@ -1,15 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { api, clearAccessToken, Coverage, CoverageRecord, LocationOption } from "@/lib/api";
-
-const AREAS = [
-  { id: "sf-bay", name: "San Francisco Bay Area", detail: "San Francisco, Oakland, San Jose" },
-  { id: "la-metro", name: "Los Angeles Metro", detail: "Los Angeles, Long Beach, Anaheim" },
-  { id: "nyc-metro", name: "New York City Metro", detail: "New York, Newark, Jersey City" },
-];
-const VENDOR_ID = process.env.NEXT_PUBLIC_VENDOR_ID ?? "vendor-demo";
-
+import { api, clearAccessToken, Coverage, CoverageRecord, LocationOption, SupportedArea } from "@/lib/api";
 function Icon({ name }: { name: "pin" | "radius" | "areas" | "search" | "lock" | "check" | "arrow" | "info" }) {
   const paths = {
     pin: <><path d="M12 21s-6-5.2-6-11a6 6 0 0 1 12 0c0 5.8-6 11-6 11Z" /><circle cx="12" cy="10" r="2" /></>,
@@ -26,6 +18,8 @@ function Icon({ name }: { name: "pin" | "radius" | "areas" | "search" | "lock" |
 
 export default function CoverageForm() {
   const [record, setRecord] = useState<CoverageRecord | null>(null);
+  const [vendorId, setVendorId] = useState<string | null>(null);
+  const [supportedAreas, setSupportedAreas] = useState<SupportedArea[]>([]);
   const [mode, setMode] = useState<"RADIUS" | "AREAS">("RADIUS");
   const [location, setLocation] = useState<LocationOption | null>(null);
   const [radius, setRadius] = useState("25");
@@ -39,12 +33,21 @@ export default function CoverageForm() {
   const [notice, setNotice] = useState<{ kind: "success" | "error" | "conflict"; text: string } | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const searchVersion = useRef(0);
+  const searchTimer = useRef<number | null>(null);
 
   async function loadCoverage() {
     setLoading(true);
     setNotice(null);
     try {
-      const saved = await api.getCoverage(VENDOR_ID);
+      const user = await api.currentUser();
+      if (!user.vendor_id) {
+        setRecord(null);
+        setNotice({ kind: "error", text: "No business profile is linked to this account. Contact support for help." });
+        return;
+      }
+      setVendorId(user.vendor_id);
+      const [saved, catalog] = await Promise.all([api.getCoverage(user.vendor_id), api.serviceAreaCatalog()]);
+      setSupportedAreas(catalog.areas);
       setRecord(saved);
       if (saved.coverage?.mode === "RADIUS") {
         setMode("RADIUS"); setLocation(saved.coverage.location); setRadius(String(saved.coverage.radius_km)); setAreaIds([]);
@@ -63,13 +66,15 @@ export default function CoverageForm() {
   }
 
   useEffect(() => { void loadCoverage(); }, []);
-  async function searchLocations(event?: FormEvent) {
-    event?.preventDefault();
-    if (query.trim().length < 2) { setSearchError("Enter at least 2 characters to search."); return; }
+  async function searchLocations(searchTerm = query) {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    const normalizedQuery = searchTerm.trim();
+    if (normalizedQuery.length < 2) { setResults([]); setSearchError(""); setSearching(false); return; }
     const version = ++searchVersion.current;
     setSearching(true); setSearchError(""); setResults([]);
     try {
-      const matches = await api.searchLocations(query.trim());
+      const matches = await api.searchLocations(normalizedQuery);
       if (version !== searchVersion.current) return;
       setResults(matches);
       if (!matches.length) setSearchError("No matching locations found. Try a nearby city or a fuller address.");
@@ -77,6 +82,18 @@ export default function CoverageForm() {
       if (version === searchVersion.current) setSearchError("Location search is temporarily unavailable. Please try again.");
     } finally { if (version === searchVersion.current) setSearching(false); }
   }
+
+  useEffect(() => {
+    if (!query.trim() || query.trim().length < 2 || location) return;
+    searchTimer.current = window.setTimeout(() => {
+      searchTimer.current = null;
+      void searchLocations(query);
+    }, 700);
+    return () => {
+      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+    };
+  }, [query, location]);
 
   const selectedNames = useMemo(() => new Set(areaIds), [areaIds]);
   function validate(): Coverage | null {
@@ -101,7 +118,8 @@ export default function CoverageForm() {
     if (!coverage || !record) return;
     setSaving(true);
     try {
-      const updated = await api.saveCoverage(VENDOR_ID, record.revision, coverage);
+      if (!vendorId) return;
+      const updated = await api.saveCoverage(vendorId, record.revision, coverage);
       setRecord(updated); setNotice({ kind: "success", text: "Your service coverage has been saved." });
     } catch (error) {
       const status = (error as Error & { status?: number }).status;
@@ -129,15 +147,15 @@ export default function CoverageForm() {
     </fieldset>
     {mode === "RADIUS" ? <div className="form-section">
       <label className="field-label" htmlFor="location-search">Service location <span>*</span></label>
-      {location ? <div className="selected-location"><span className="pin">⌖</span><span><strong>{location.label}</strong><small>{location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}</small></span><button type="button" aria-label="Change location" onClick={() => { searchVersion.current++; setLocation(null); setQuery(""); setResults([]); }}>Change</button></div> : <><div className="search-wrap"><span className="search-icon"><Icon name="search" /></span><input id="location-search" value={query} onChange={(event) => { searchVersion.current++; setSearching(false); setQuery(event.target.value); setResults([]); setSearchError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchLocations(); } }} placeholder="City or address" autoComplete="off" aria-describedby="location-help" /><button className="search-button" type="button" onClick={() => void searchLocations()} disabled={searching}>{searching ? "Searching…" : "Search"}</button></div>{results.length > 0 && <div className="search-results">{results.map((result) => <button type="button" key={result.id} onClick={() => { searchVersion.current++; setLocation(result); setQuery(""); setResults([]); setSearchError(""); }}><span className="pin">⌖</span><span><strong>{result.label}</strong><small>{result.latitude.toFixed(3)}, {result.longitude.toFixed(3)}</small></span></button>)}</div>}{searchError && <p className="field-error" role="status">{searchError}</p>}</>}
-      <p className="field-help" id="location-help">Search for a city or address, then select a result. Results are powered by OpenStreetMap.</p>
+      {location ? <div className="selected-location"><span className="pin">⌖</span><span><strong>{location.label}</strong><small>{location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}</small></span><button type="button" aria-label="Change location" onClick={() => { searchVersion.current++; setLocation(null); setQuery(""); setResults([]); }}>Change</button></div> : <><div className="search-wrap"><span className="search-icon"><Icon name="search" /></span><input id="location-search" value={query} onChange={(event) => { searchVersion.current++; setSearching(false); setQuery(event.target.value); setResults([]); setSearchError(""); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchLocations(); } }} placeholder="City or address" autoComplete="off" aria-describedby="location-help" /><button className="search-button" type="button" onClick={() => void searchLocations()} disabled={searching}>{searching ? "Searching…" : "Search"}</button></div>{searching && <p className="field-help" role="status">Searching locations…</p>}{results.length > 0 && <div className="search-results">{results.map((result) => <button type="button" key={result.id} onClick={() => { searchVersion.current++; setLocation(result); setQuery(""); setResults([]); setSearchError(""); }}><span className="pin">⌖</span><span><strong>{result.label}</strong><small>{result.latitude.toFixed(3)}, {result.longitude.toFixed(3)}</small></span></button>)}</div>}{searchError && <p className="field-error" role="status">{searchError}</p>}</>}
+      <p className="field-help" id="location-help">Results appear as you type. Select a location to continue. Powered by OpenStreetMap.</p>
       <label className="field-label radius-label" htmlFor="radius">Service radius <span>*</span></label>
       <div className="radius-input"><input id="radius" type="number" min="0.01" max="500" step="any" value={radius} onChange={(event) => setRadius(event.target.value)} /><span>kilometers</span></div>
       <p className="field-help">Maximum radius is 500 km.</p>
     </div> : <div className="form-section areas-section">
       <div className="area-label-row"><label className="field-label">Service areas <span>*</span></label><span className="selection-count">{areaIds.length} selected</span></div>
       <p className="field-help area-intro">Select every region where you can reliably serve customers.</p>
-      <div className="area-list">{AREAS.map((area) => <label className={`area-option ${selectedNames.has(area.id) ? "checked" : ""}`} key={area.id}><input type="checkbox" checked={selectedNames.has(area.id)} onChange={() => toggleArea(area.id)} /><span className="custom-check"><Icon name="check" /></span><span className="area-description"><strong>{area.name}</strong><small>{area.detail}</small></span><span className="area-symbol"><Icon name="pin" /></span></label>)}</div>
+      <div className="area-list">{supportedAreas.map((area) => <label className={`area-option ${selectedNames.has(area.id) ? "checked" : ""}`} key={area.id}><input type="checkbox" checked={selectedNames.has(area.id)} onChange={() => toggleArea(area.id)} /><span className="custom-check"><Icon name="check" /></span><span className="area-description"><strong>{area.label}</strong><small>{area.detail}</small></span><span className="area-symbol"><Icon name="pin" /></span></label>)}</div>
       <div className="dataset-note"><Icon name="info" /><span>These regions use the assignment demo area dataset.</span></div>
     </div>}
     {errors.length > 0 && <div className="validation-errors" role="alert">{errors.map((error) => <p key={error}>• {error}</p>)}</div>}
